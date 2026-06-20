@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SpendTracker</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1565C0" />
+  <!-- Ionic CSS -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core@7.6.0/css/ionic.bundle.css" />
+  <!-- Ionicons -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+  <script nomodule src="https://cdn.jsdelivr.net/npm/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --primary: #1565C0;
+      --primary-light: #1976D2;
+      --primary-dark: #0D47A1;
+      --accent: #2196F3;
+      --success: #4CAF50;
+      --warning: #FF9800;
+      --danger: #F44336;
+      --bg: #F0F4F8;
+      --card-bg: #FFFFFF;
+      --text-primary: #1A1A2E;
+      --text-secondary: #546E7A;
+      --border: #E3EAF2;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+    }
+
+    .app-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 430px;
+      margin: 0 auto;
+      overflow: hidden;
+      background: var(--bg);
+    }
+
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* ─── HEADER ─── */
+    .app-header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .app-header h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.3px; }
+    .header-icons { display: flex; gap: 16px; align-items: center; }
+    .header-icons ion-icon { font-size: 22px; cursor: pointer; }
+
+    /* ─── BOTTOM NAV ─── */
+    .bottom-nav {
+      flex-shrink: 0;
+      background: white;
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 100;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.08);
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 4px;
+      cursor: pointer;
+      transition: color 0.2s;
+      color: var(--text-secondary);
+      font-size: 11px;
+      gap: 3px;
+      border: none;
+      background: none;
+    }
+    .nav-item ion-icon { font-size: 22px; }
+    .nav-item.active { color: var(--primary); }
+    .nav-item span { font-size: 10px; }
+
+    /* ─── SCREENS ─── */
+    .screen { display: none; padding: 16px 16px 24px; animation: fadeIn 0.25s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:none;} }
+
+    /* ─── CARDS ─── */
+    .card {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    /* ─── HOME SCREEN ─── */
+    .month-selector {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 20px;
+      cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      width: fit-content;
+      margin: 0 auto 16px;
+    }
+
+    .summary-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .summary-card {
+      background: white;
+      border-radius: 14px;
+      padding: 16px;
+      text-align: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    }
+    .summary-card .label { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .summary-card .amount { font-size: 22px; font-weight: 700; }
+    .summary-card .amount.spent { color: var(--danger); }
+    .summary-card .amount.received { color: var(--success); }
+
+    /* ─── TRANSACTION LIST ─── */
+    .tx-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .tx-item:last-child { border-bottom: none; }
+    .tx-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .tx-info { flex: 1; }
+    .tx-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .tx-date { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+    .tx-right { text-align: right; }
+    .tx-amount { font-size: 15px; font-weight: 700; }
+    .tx-amount.debit { color: var(--danger); }
+    .tx-amount.credit { color: var(--success); }
+    .tx-method { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* ─── BUTTONS ─── */
+    .btn-row { display: flex; gap: 10px; margin-top: 4px; }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--primary); color: white; flex: 1; }
+    .btn-outline { background: transparent; border: 1.5px solid var(--primary); color: var(--primary); flex: 1; }
+
+    /* ─── SMS BANNER ─── */
+    .sms-banner {
+      background: #E3F2FD;
+      border: 1px solid #90CAF9;
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      color: #1565C0;
+      margin-bottom: 16px;
+    }
+    .sms-banner ion-icon { font-size: 20px; flex-shrink: 0; }
+    .sms-banner .close { margin-left: auto; cursor: pointer; opacity: 0.6; }
+
+    /* ─── TRANSACTIONS SCREEN ─── */
+    .tab-bar {
+      display: flex;
+      background: white;
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px;
+      text-align: center;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .tab-btn.active { background: var(--primary); color: white; font-weight: 600; }
+
+    .search-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: white;
+      border-radius: 10px;
+      padding: 8px 12px;
+      gap: 8px;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+    }
+    .search-box input {
+      border: none;
+      outline: none;
+      flex: 1;
+      font-size: 14px;
+      color: var(--text-primary);
+      background: none;
+    }
+    .filter-chip {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 8px 12px;
+      background: white;
+      border-radius: 10px;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.06);
+      cursor: pointer;
+      border: none;
+    }
+
+    .fab {
+      position: fixed;
+      bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 16px rgba(21,101,192,0.4);
+      font-size: 28px;
+      z-index: 99;
+      transition: transform 0.2s;
+    }
+    .fab:active { transform: scale(0.93); }
+
+    /* ─── BUDGET SCREEN ─── */
+    .budget-header {
+      margin-bottom: 4px;
+    }
+    .budget-month { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+    .budget-sub { font-size: 13px; color: var(--text-secondary); }
+
+    .budget-item { margin-bottom: 18px; }
+    .budget-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .budget-item-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+    .budget-item-amounts { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+    .budget-pct {
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .budget-pct.ok { color: var(--success); }
+    .budget-pct.warn { color: var(--warning); }
+    .budget-pct.over { color: var(--danger); }
+
+    .progress-bar {
+      height: 8px;
+      background: #E8EDF2;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s ease;
+    }
+    .progress-fill.ok { background: var(--success); }
+    .progress-fill.warn { background: var(--warning); }
+    .progress-fill.over { background: var(--danger); }
+
+    .alert-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+    }
+    .alert-label { font-size: 13px; color: var(--text-secondary); }
+
+    /* Toggle */
+    .toggle {
+      width: 44px;
+      height: 24px;
+      background: #ccc;
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.3s;
+      border: none;
+    }
+    .toggle.on { background: var(--primary); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.3s;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ─── INSIGHTS SCREEN ─── */
+    .chart-wrapper { width: 100%; }
+    canvas { width: 100% !important; }
+
+    .insight-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .insight-row:last-child { border-bottom: none; }
+    .insight-label { font-size: 13px; color: var(--text-secondary); }
+    .insight-value { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+
+    .merchant-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .merchant-chip {
+      padding: 6px 14px;
+      background: #E3F2FD;
+      color: var(--primary);
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 200;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 24px 24px 0 0;
+      padding: 24px 20px 40px;
+      width: 100%;
+      max-width: 430px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    .modal-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: #DDD;
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      color: var(--text-primary);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--primary); }
+
+    .type-toggle {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .type-btn {
+      flex: 1;
+      padding: 10px;
+      border-radius: 10px;
+      border: 1.5px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .type-btn.debit.active { background: #FFEBEE; border-color: var(--danger); color: var(--danger); }
+    .type-btn.credit.active { background: #E8F5E9; border-color: var(--success); color: var(--success); }
+
+    .cat-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .cat-chip {
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      background: none;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+    }
+    .cat-chip.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+    /* ─── HEADER TITLE with back ─── */
+    .back-header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .back-header h1 { font-size: 20px; font-weight: 700; }
+
+  </style>
+</head>
+<body>
+<div class="app-wrap">
+  <div class="content-area">
+  <!-- HOME HEADER -->
+  <div id="header-home" class="app-header">
+    <ion-icon name="menu" style="font-size:24px;cursor:pointer"></ion-icon>
+    <h1>SpendTracker</h1>
+    <div class="header-icons">
+      <ion-icon name="notifications-outline"></ion-icon>
+    </div>
+  </div>
+
+  <!-- BACK HEADERS for sub-screens -->
+  <div id="header-transactions" class="back-header" style="display:none">
+    <ion-icon name="arrow-back" style="font-size:22px;cursor:pointer" onclick="showScreen('home')"></ion-icon>
+    <h1>SpendTracker</h1>
+  </div>
+  <div id="header-budget" class="back-header" style="display:none">
+    <ion-icon name="arrow-back" style="font-size:22px;cursor:pointer" onclick="showScreen('home')"></ion-icon>
+    <h1>SpendTracker</h1>
+  </div>
+  <div id="header-insights" class="back-header" style="font-size:22px;display:none">
+    <ion-icon name="arrow-back" style="cursor:pointer" onclick="showScreen('home')"></ion-icon>
+    <h1>SpendTracker</h1>
+  </div>
+  <div id="header-settings" class="back-header" style="display:none">
+    <ion-icon name="arrow-back" style="font-size:22px;cursor:pointer" onclick="showScreen('home')"></ion-icon>
+    <h1>Settings</h1>
+  </div>
+
+  <!-- ══════════ HOME SCREEN ══════════ -->
+  <div id="screen-home" class="screen active">
+    <div class="month-selector">
+      <ion-icon name="chevron-back" onclick="changeHomeMonth(-1)" style="cursor:pointer"></ion-icon>
+      <span id="month-label"></span>
+      <ion-icon name="chevron-forward" onclick="changeHomeMonth(1)" style="cursor:pointer"></ion-icon>
+    </div>
+
+    <div class="summary-cards">
+      <div class="summary-card">
+        <div class="label">Total Spent</div>
+        <div class="amount spent" id="total-spent">₹0</div>
+      </div>
+      <div class="summary-card">
+        <div class="label">Total Received</div>
+        <div class="amount received" id="total-received">₹0</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recent Transactions</div>
+      <div id="recent-tx-list"></div>
+      <div class="btn-row" style="margin-top:14px;">
+        <button class="btn btn-primary" onclick="openAddModal()">Add Transaction</button>
+        <button class="btn btn-outline" onclick="showScreen('transactions')">View All</button>
+        <button class="btn btn-outline" onclick="showScreen('budget')">Budget</button>
+      </div>
+    </div>
+
+    <div class="sms-banner" id="sms-banner">
+      <ion-icon name="chatbubble-ellipses-outline"></ion-icon>
+      <div>
+        <strong>SMS auto-read is OFF.</strong><br>
+        Enable for automatic tracking.
+        <button onclick="toggleSMS()" style="border:none;background:none;color:var(--primary);font-size:12px;font-weight:600;cursor:pointer;padding:0;margin-left:4px;">Enable</button>
+      </div>
+      <ion-icon name="close" class="close" onclick="document.getElementById('sms-banner').style.display='none'"></ion-icon>
+    </div>
+  </div>
+
+  <!-- ══════════ TRANSACTIONS SCREEN ══════════ -->
+  <div id="screen-transactions" class="screen">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab(this,'all')">All</button>
+      <button class="tab-btn" onclick="switchTab(this,'sent')">Sent</button>
+      <button class="tab-btn" onclick="switchTab(this,'received')">Received</button>
+    </div>
+
+    <div class="search-row">
+      <div class="search-box">
+        <ion-icon name="search-outline" style="color:#90A4AE;font-size:18px"></ion-icon>
+        <input type="text" placeholder="Search transactions..." id="search-input" oninput="filterTransactions()" />
+      </div>
+      <button class="filter-chip" id="date-filter-chip" onclick="openDateFilter()">
+        <ion-icon name="calendar-outline"></ion-icon> All
+      </button>
+    </div>
+
+    <div class="card" style="padding:8px 16px;" id="tx-list-container"></div>
+  </div>
+
+  <!-- ══════════ BUDGET SCREEN ══════════ -->
+  <div id="screen-budget" class="screen">
+    <div class="card">
+      <div class="budget-header">
+        <div class="budget-month">August 2024</div>
+        <div class="budget-sub">Monthly Budget</div>
+      </div>
+    </div>
+
+    <div class="card" id="budget-items-container"></div>
+  </div>
+
+  <!-- ══════════ INSIGHTS SCREEN ══════════ -->
+  <div id="screen-insights" class="screen">
+
+    <div class="card">
+      <div class="card-title" id="donut-chart-title">Spending by Vendor</div>
+      <div id="donut-empty" style="display:none;text-align:center;padding:24px;color:var(--text-secondary);font-size:13px;">
+        No debit transactions yet
+      </div>
+      <div class="chart-wrapper" style="height:220px;display:flex;align-items:center;justify-content:center;">
+        <canvas id="donut-chart" style="max-height:220px;max-width:220px;"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Monthly Spending Trend (Last 6 Months)</div>
+      <div class="chart-wrapper" style="height:160px;">
+        <canvas id="bar-chart"></canvas>
+      </div>
+    </div>
+
+    <!-- Chart label manager -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div class="card-title" style="margin-bottom:0;">Chart Labels</div>
+        <button onclick="openAddLabelModal()" style="background:var(--primary);color:white;border:none;border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;cursor:pointer;">+ Add Label</button>
+      </div>
+      <p id="labels-hint" style="font-size:12px;color:var(--text-secondary);margin-bottom:10px;">
+        Group vendors into labels — each becomes a slice in the chart.
+      </p>
+      <div id="chart-labels-list"></div>
+      <p id="labels-empty-msg" style="text-align:center;padding:12px 0;color:var(--text-secondary);font-size:13px;display:none;">
+        No labels yet. Chart groups by category.
+      </p>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="card">
+      <div class="insight-row">
+        <span class="insight-label">Biggest Expense</span>
+        <span class="insight-value" id="insight-biggest">—</span>
+      </div>
+      <div class="insight-row">
+        <span class="insight-label">Savings Rate</span>
+        <span class="insight-value" id="insight-savings">—</span>
+      </div>
+      <div class="insight-row">
+        <span class="insight-label">Avg Daily Spend</span>
+        <span class="insight-value" id="insight-avg">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS SCREEN ══════════ -->
+  <div id="screen-settings" class="screen">
+
+    <div class="card">
+      <div class="card-title">SMS Auto-Read</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;">
+        <div>
+          <div style="font-size:14px;font-weight:600;color:var(--text-primary);">Read Bank SMS</div>
+          <div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">Auto-detect transactions from bank messages</div>
+        </div>
+        <button class="toggle" id="sms-settings-toggle" onclick="toggleSmsFromSettings()"></button>
+      </div>
+      <button id="refresh-sms-btn" class="btn btn-primary" style="margin-top:12px;display:none;" onclick="loadSmsTransactions()">
+        Refresh SMS Transactions
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Data</div>
+      <div class="insight-row" style="cursor:pointer;" onclick="clearManualTransactions()">
+        <span class="insight-label">Clear manual transactions</span>
+        <ion-icon name="trash-outline" style="color:var(--danger);font-size:20px;"></ion-icon>
+      </div>
+      <div class="insight-row" style="cursor:pointer;" onclick="clearAllTransactions()">
+        <span class="insight-label">Clear all transactions</span>
+        <ion-icon name="trash-outline" style="color:var(--danger);font-size:20px;"></ion-icon>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">About</div>
+      <div class="insight-row">
+        <span class="insight-label">App version</span>
+        <span class="insight-value">1.0.0</span>
+      </div>
+      <div class="insight-row">
+        <span class="insight-label">Total transactions</span>
+        <span class="insight-value" id="settings-tx-count">0</span>
+      </div>
+    </div>
+
+  </div>
+  </div><!-- end content-area -->
+
+  <!-- ══════════ BOTTOM NAV ══════════ -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showScreen('home')" id="nav-home">
+      <ion-icon name="home"></ion-icon>
+      <span>Home</span>
+    </button>
+    <button class="nav-item" onclick="showScreen('transactions')" id="nav-transactions">
+      <ion-icon name="swap-horizontal-outline"></ion-icon>
+      <span>Transactions</span>
+    </button>
+    <button class="nav-item" onclick="showScreen('insights')" id="nav-insights">
+      <ion-icon name="bar-chart-outline"></ion-icon>
+      <span>Insights</span>
+    </button>
+    <button class="nav-item" onclick="showScreen('budget')" id="nav-budget">
+      <ion-icon name="wallet-outline"></ion-icon>
+      <span>Budget</span>
+    </button>
+    <button class="nav-item" onclick="showScreen('settings')" id="nav-settings">
+      <ion-icon name="settings-outline"></ion-icon>
+      <span>Settings</span>
+    </button>
+  </nav>
+</div><!-- end app-wrap -->
+
+  <!-- FAB for transactions screen -->
+  <button class="fab" id="fab-btn" style="display:none" onclick="openAddModal()">
+    <ion-icon name="add"></ion-icon>
+  </button>
+
+  <!-- ══════════ ADD / EDIT LABEL MODAL ══════════ -->
+  <div class="modal-overlay" id="add-label-modal" onclick="closeAddLabelOverlay(event)">
+    <div class="modal" style="max-height:90vh;overflow-y:auto;">
+      <div class="modal-handle"></div>
+      <div class="modal-title" id="label-modal-title">Add Chart Label</div>
+
+      <div class="form-group">
+        <label class="form-label">Label Name</label>
+        <input type="text" class="form-input" id="label-name-input" placeholder="e.g. Food &amp; Drinks" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Select Vendors</label>
+        <p id="vendor-list-empty" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;display:none;">
+          No transactions yet — add some first.
+        </p>
+        <div id="vendor-select-list" style="max-height:220px;overflow-y:auto;border:1.5px solid var(--border);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="closeAddLabelModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveLabelModal()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ DATE FILTER MODAL ══════════ -->
+  <div class="modal-overlay" id="date-filter-modal" onclick="closeDateFilterOverlay(event)">
+    <div class="modal" style="padding-bottom:32px;">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Filter by Month</div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <button onclick="changeTxYear(-1)" style="background:none;border:none;cursor:pointer;padding:8px;color:var(--primary);">
+          <ion-icon name="chevron-back" style="font-size:22px;"></ion-icon>
+        </button>
+        <span id="filter-year-label" style="font-size:18px;font-weight:700;color:var(--text-primary);"></span>
+        <button onclick="changeTxYear(1)" style="background:none;border:none;cursor:pointer;padding:8px;color:var(--primary);">
+          <ion-icon name="chevron-forward" style="font-size:22px;"></ion-icon>
+        </button>
+      </div>
+
+      <div id="month-picker-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px;"></div>
+
+      <button class="btn btn-outline" onclick="clearTxDateFilter()">Show All Months</button>
+    </div>
+  </div>
+
+  <!-- ══════════ ADD TRANSACTION MODAL ══════════ -->
+  <div class="modal-overlay" id="add-modal" onclick="closeModalOnOverlay(event)">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <div class="modal-title">Add Transaction</div>
+
+      <div class="type-toggle">
+        <button class="type-btn debit active" id="type-debit" onclick="setType('debit')">
+          <ion-icon name="arrow-up-circle-outline"></ion-icon> Debit
+        </button>
+        <button class="type-btn credit" id="type-credit" onclick="setType('credit')">
+          <ion-icon name="arrow-down-circle-outline"></ion-icon> Credit
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Amount (₹)</label>
+        <input type="number" class="form-input" id="tx-amount" placeholder="0.00" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <input type="text" class="form-input" id="tx-desc" placeholder="e.g. Zomato order" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Payment Method</label>
+        <select class="form-input" id="tx-method">
+          <option>HDFC UPI</option>
+          <option>GPay</option>
+          <option>SBI Bank</option>
+          <option>ICICI Bank</option>
+          <option>Paytm</option>
+          <option>Axis Bank</option>
+          <option>Cash</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <div class="cat-grid" id="cat-grid"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="addTransaction()">Add</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ════════════════════════════════
+    //  DATA
+    // ════════════════════════════════
+    const categories = [
+      { name: 'Food', icon: '🍔', color: '#FF7043' },
+      { name: 'Transport', icon: '🚗', color: '#42A5F5' },
+      { name: 'Shopping', icon: '🛍️', color: '#AB47BC' },
+      { name: 'Utilities', icon: '⚡', color: '#26C6DA' },
+      { name: 'Health', icon: '💊', color: '#66BB6A' },
+      { name: 'Entertainment', icon: '🎬', color: '#FFA726' },
+      { name: 'Salary', icon: '💰', color: '#26A69A' },
+      { name: 'Other', icon: '📦', color: '#78909C' },
+    ];
+
+    let transactions = [];
+
+    const budgets = [
+      { cat: 'Overall', spent: 0, limit: 50000 },
+      { cat: 'Food', spent: 0, limit: 15000 },
+      { cat: 'Transport', spent: 0, limit: 5000 },
+      { cat: 'Shopping', spent: 0, limit: 8000 },
+      { cat: 'Utilities', spent: 0, limit: 5000 },
+    ];
+
+    let currentTab = 'all';
+    let selectedType = 'debit';
+    let selectedCat = 'Food';
+    let alertToggle = false;
+    let smsEnabled = false;
+    let charts = {};
+    let notificationMode = false;
+
+    // ════════════════════════════════
+    //  SCREEN NAVIGATION
+    // ════════════════════════════════
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('screen-' + name).classList.add('active');
+
+      // Headers
+      ['home','transactions','budget','insights','settings'].forEach(h => {
+        const el = document.getElementById('header-' + h);
+        if (el) el.style.display = (h === name) ? 'flex' : 'none';
+      });
+
+      // Nav
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+      const navEl = document.getElementById('nav-' + name);
+      if (navEl) navEl.classList.add('active');
+
+      // FAB
+      document.getElementById('fab-btn').style.display = name === 'transactions' ? 'flex' : 'none';
+
+      if (name === 'insights') initCharts();
+      if (name === 'settings') refreshSettingsScreen();
+    }
+
+    // ════════════════════════════════
+    //  RENDER TRANSACTIONS
+    // ════════════════════════════════
+    function getCatIcon(catName) {
+      const c = categories.find(c => c.name === catName);
+      return c ? c.icon : '📦';
+    }
+    function getCatColor(catName) {
+      const c = categories.find(c => c.name === catName);
+      return c ? c.color : '#78909C';
+    }
+
+    function renderTxItem(tx) {
+      const isDebit  = tx.type === 'debit';
+      const sign     = isDebit ? '-' : '+';
+      const arrow    = isDebit ? 'arrow-up-circle-outline' : 'arrow-down-circle-outline';
+      const iconBg   = isDebit ? '#FFEBEE' : '#E8F5E9';
+      const iconClr  = isDebit ? 'var(--danger)' : 'var(--success)';
+      return `
+        <div class="tx-item">
+          <div class="tx-icon" style="background:${getCatColor(tx.cat)}22;">
+            ${getCatIcon(tx.cat)}
+          </div>
+          <div class="tx-info">
+            <div class="tx-name">${tx.name}</div>
+            <div class="tx-date">${tx.date}</div>
+          </div>
+          <div class="tx-right">
+            <div style="display:flex;align-items:center;gap:4px;justify-content:flex-end;">
+              <ion-icon name="${arrow}" style="font-size:14px;color:${iconClr};"></ion-icon>
+              <div class="tx-amount ${tx.type}">${sign}₹${tx.amount.toLocaleString('en-IN')}</div>
+            </div>
+            <div class="tx-method">${tx.method}</div>
+          </div>
+        </div>`;
+    }
+
+    // ── home month state ──
+    let homeYear  = new Date().getFullYear();
+    let homeMonth = new Date().getMonth(); // 0-11
+
+    // ── tx date-filter state ──
+    let txFilterYear  = new Date().getFullYear();
+    let txFilterMonth = -1; // -1 = all
+
+    const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+    // Returns true if transaction falls in the given year/month
+    function txInMonth(tx, year, month) {
+      if (tx.ts) {
+        const d = new Date(tx.ts);
+        return d.getFullYear() === year && d.getMonth() === month;
+      }
+      // parse "DD MM, YYYY"
+      const m = (tx.date || '').match(/(\d+)\s+(\d+),\s+(\d+)/);
+      if (!m) return false;
+      return Number.parseInt(m[3], 10) === year && (Number.parseInt(m[2], 10) - 1) === month;
+    }
+
+    // ── home month navigation ──
+    function changeHomeMonth(dir) {
+      homeMonth += dir;
+      if (homeMonth < 0)  { homeMonth = 11; homeYear--; }
+      if (homeMonth > 11) { homeMonth = 0;  homeYear++; }
+      document.getElementById('month-label').textContent = MONTHS[homeMonth] + ' ' + homeYear;
+      renderRecent();
+      updateSummary();
+    }
+
+    function renderRecent() {
+      const el = document.getElementById('recent-tx-list');
+      const list = transactions
+        .filter(t => txInMonth(t, homeYear, homeMonth))
+        .slice(0, 5);
+      el.innerHTML = list.length
+        ? list.map(renderTxItem).join('')
+        : '<p style="text-align:center;padding:16px;color:var(--text-secondary);">No transactions this month</p>';
+    }
+
+    function renderAllTransactions(filter = 'all', search = '') {
+      const el = document.getElementById('tx-list-container');
+      let list = transactions;
+      if (filter === 'sent')     list = list.filter(t => t.type === 'debit');
+      if (filter === 'received') list = list.filter(t => t.type === 'credit');
+      if (txFilterMonth !== -1)  list = list.filter(t => txInMonth(t, txFilterYear, txFilterMonth));
+      if (search) list = list.filter(t => t.name.toLowerCase().includes(search.toLowerCase()));
+      el.innerHTML = list.length
+        ? list.map(renderTxItem).join('')
+        : '<p style="text-align:center;padding:20px;color:var(--text-secondary);">No transactions found</p>';
+    }
+
+    function filterTransactions() {
+      renderAllTransactions(currentTab, document.getElementById('search-input').value);
+    }
+
+    function switchTab(btn, tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentTab = tab;
+      renderAllTransactions(tab, document.getElementById('search-input').value);
+    }
+
+    // ── date filter modal ──
+    function openDateFilter() {
+      document.getElementById('filter-year-label').textContent = txFilterYear;
+      renderMonthPickerGrid();
+      document.getElementById('date-filter-modal').classList.add('open');
+    }
+
+    function closeDateFilterOverlay(e) {
+      if (e.target === document.getElementById('date-filter-modal'))
+        document.getElementById('date-filter-modal').classList.remove('open');
+    }
+
+    function changeTxYear(dir) {
+      const now = new Date();
+      const next = txFilterYear + dir;
+      if (next > now.getFullYear()) return;
+      txFilterYear = next;
+      document.getElementById('filter-year-label').textContent = txFilterYear;
+      renderMonthPickerGrid();
+    }
+
+    function renderMonthPickerGrid() {
+      document.getElementById('month-picker-grid').innerHTML = MONTH_SHORT.map((m, i) =>
+        `<button class="cat-chip ${txFilterMonth === i ? 'active' : ''}"
+           onclick="applyTxMonthFilter(${i})">${m}</button>`
+      ).join('');
+      // highlight selected
+      if (txFilterMonth !== -1) {
+        const btns = document.querySelectorAll('#month-picker-grid .cat-chip');
+        if (btns[txFilterMonth]) btns[txFilterMonth].classList.add('active');
+      }
+    }
+
+    function applyTxMonthFilter(month) {
+      txFilterMonth = month;
+      document.getElementById('date-filter-modal').classList.remove('open');
+      updateDateFilterChip();
+      renderAllTransactions(currentTab, document.getElementById('search-input').value);
+    }
+
+    function clearTxDateFilter() {
+      txFilterMonth = -1;
+      document.getElementById('date-filter-modal').classList.remove('open');
+      updateDateFilterChip();
+      renderAllTransactions(currentTab, document.getElementById('search-input').value);
+    }
+
+    function updateDateFilterChip() {
+      const chip = document.getElementById('date-filter-chip');
+      if (txFilterMonth === -1) {
+        chip.innerHTML = '<ion-icon name="calendar-outline"></ion-icon> All';
+        chip.style.background = 'white';
+        chip.style.color = 'var(--text-secondary)';
+      } else {
+        chip.innerHTML = `<ion-icon name="calendar-outline"></ion-icon> ${MONTH_SHORT[txFilterMonth]} ${txFilterYear}`;
+        chip.style.background = 'var(--primary)';
+        chip.style.color = 'white';
+      }
+    }
+
+    // ════════════════════════════════
+    //  RENDER BUDGET
+    // ════════════════════════════════
+    function renderBudget() {
+      const el = document.getElementById('budget-items-container');
+      let html = '';
+      budgets.forEach(b => {
+        const pct = Math.round((b.spent / b.limit) * 100);
+        const cls = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+        const label = pct >= 100 ? 'Exceeded' : pct >= 80 ? 'Warning' : pct + '%';
+        const fillW = Math.min(pct, 100);
+        html += `
+          <div class="budget-item">
+            <div class="budget-item-header">
+              <div>
+                <div class="budget-item-name">${b.cat}:</div>
+                <div class="budget-item-amounts">₹${b.spent.toLocaleString('en-IN')} / ₹${b.limit.toLocaleString('en-IN')}</div>
+              </div>
+              <div class="budget-pct ${cls}">${pct >= 100 ? pct + '%' : ''}<br><span style="font-size:12px;">${label}</span></div>
+            </div>
+            <div class="progress-bar"><div class="progress-fill ${cls}" style="width:${fillW}%"></div></div>
+          </div>`;
+      });
+      html += `
+        <div class="alert-row">
+          <span class="alert-label">Alert at 80%</span>
+          <button class="toggle ${alertToggle ? 'on' : ''}" id="alert-toggle" onclick="toggleAlert()"></button>
+        </div>`;
+      el.innerHTML = html;
+    }
+
+    function toggleAlert() {
+      alertToggle = !alertToggle;
+      document.getElementById('alert-toggle').className = 'toggle ' + (alertToggle ? 'on' : '');
+    }
+
+    // ════════════════════════════════
+    //  CHART LABELS STATE
+    // ════════════════════════════════
+    const CHART_COLORS = ['#FF7043','#42A5F5','#AB47BC','#26C6DA','#66BB6A','#FFA726','#26A69A','#EF5350','#7E57C2','#29B6F6','#D4E157','#FF7043'];
+    let chartLabels = []; // [{id, name, vendors:[], color}]
+    let editingLabelId = null;
+    let selectedVendors = new Set();
+
+    // All unique debit vendor names across transactions
+    function getAllVendors() {
+      return [...new Set(transactions.filter(t => t.type === 'debit').map(t => t.name))].sort();
+    }
+
+    // Vendors already assigned to any label (except the one being edited)
+    function getAssignedVendors(excludeId = null) {
+      return new Set(
+        chartLabels.filter(l => l.id !== excludeId).flatMap(l => l.vendors)
+      );
+    }
+
+    // Compute data slices for the donut chart
+    function getDonutData() {
+      const debitTx = transactions.filter(t => t.type === 'debit');
+      if (!debitTx.length) return [];
+
+      if (chartLabels.length === 0) {
+        // Default: group by category
+        const catMap = {};
+        debitTx.forEach(t => { catMap[t.cat] = (catMap[t.cat] || 0) + t.amount; });
+        const defColors = ['#FF7043','#42A5F5','#AB47BC','#26C6DA','#66BB6A','#FFA726','#78909C'];
+        return Object.entries(catMap)
+          .sort((a, b) => b[1] - a[1])
+          .map(([name, amount], i) => ({ name, amount, color: defColors[i % defColors.length] }));
+      }
+
+      // Custom labels
+      const assigned = getAssignedVendors();
+      const slices = chartLabels.map(l => ({
+        name:   l.name,
+        color:  l.color,
+        amount: debitTx.filter(t => l.vendors.includes(t.name)).reduce((s, t) => s + t.amount, 0)
+      })).filter(s => s.amount > 0);
+
+      const otherAmt = debitTx
+        .filter(t => !assigned.has(t.name))
+        .reduce((s, t) => s + t.amount, 0);
+      if (otherAmt > 0) slices.push({ name: 'Other', color: '#78909C', amount: otherAmt });
+
+      return slices;
+    }
+
+    // ════════════════════════════════
+    //  CHARTS
+    // ════════════════════════════════
+    function initCharts() {
+      if (charts.donut) { charts.donut.destroy(); charts.donut = null; }
+      if (charts.bar)   { charts.bar.destroy();   charts.bar   = null; }
+
+      // ── Donut ──
+      const slices = getDonutData();
+      const donutEmpty = document.getElementById('donut-empty');
+      const donutCanvas = document.getElementById('donut-chart');
+
+      if (!slices.length) {
+        donutEmpty.style.display = 'block';
+        donutCanvas.style.display = 'none';
+      } else {
+        donutEmpty.style.display = 'none';
+        donutCanvas.style.display = '';
+        charts.donut = new Chart(donutCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: slices.map(s => s.name),
+            datasets: [{
+              data: slices.map(s => s.amount),
+              backgroundColor: slices.map(s => s.color),
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            cutout: '60%',
+            plugins: {
+              legend: { position: 'right', labels: { font: { size: 11 }, boxWidth: 12 } },
+              tooltip: {
+                callbacks: {
+                  label: ctx => ` ₹${ctx.parsed.toLocaleString('en-IN')}`
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // ── Bar: last 6 months spending ──
+      const now = new Date();
+      const barLabels = [], barData = [], barColors = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const yr = d.getFullYear(), mo = d.getMonth();
+        const total = transactions
+          .filter(t => t.type === 'debit' && txInMonth(t, yr, mo))
+          .reduce((s, t) => s + t.amount, 0);
+        barLabels.push(MONTH_SHORT[mo]);
+        barData.push(+(total / 1000).toFixed(1));
+        barColors.push(i === 0 ? '#1565C0' : '#81C784');
+      }
+
+      charts.bar = new Chart(document.getElementById('bar-chart'), {
+        type: 'bar',
+        data: {
+          labels: barLabels,
+          datasets: [{
+            data: barData,
+            backgroundColor: barColors,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { beginAtZero: true, grid: { color: '#F0F0F0' }, ticks: { font: { size: 10 }, callback: v => '₹' + v + 'k' } },
+            x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+          }
+        }
+      });
+
+      // ── Stats ──
+      const debitTx = transactions.filter(t => t.type === 'debit');
+      const creditTx = transactions.filter(t => t.type === 'credit');
+
+      // Biggest single expense
+      const biggest = debitTx.reduce((max, t) => t.amount > (max?.amount || 0) ? t : max, null);
+      document.getElementById('insight-biggest').textContent =
+        biggest ? `${biggest.name} — ₹${biggest.amount.toLocaleString('en-IN')}` : '—';
+
+      // Savings rate (current month)
+      const mSpent    = debitTx.filter(t => txInMonth(t, homeYear, homeMonth)).reduce((s,t)=>s+t.amount,0);
+      const mReceived = creditTx.filter(t => txInMonth(t, homeYear, homeMonth)).reduce((s,t)=>s+t.amount,0);
+      const savingsRate = mReceived > 0 ? Math.round(((mReceived - mSpent) / mReceived) * 100) : 0;
+      const savingsEl = document.getElementById('insight-savings');
+      savingsEl.textContent = mReceived > 0 ? `${savingsRate}% of income saved` : '—';
+      savingsEl.style.color = savingsRate >= 0 ? 'var(--success)' : 'var(--danger)';
+
+      // Avg daily spend (current month)
+      const daysInMonth = new Date(homeYear, homeMonth + 1, 0).getDate();
+      const daysSoFar   = homeYear === now.getFullYear() && homeMonth === now.getMonth()
+        ? now.getDate() : daysInMonth;
+      const avgDaily = daysSoFar > 0 ? Math.round(mSpent / daysSoFar) : 0;
+      document.getElementById('insight-avg').textContent =
+        mSpent > 0 ? `₹${avgDaily.toLocaleString('en-IN')}` : '—';
+
+      // Render labels card
+      renderChartLabelsCard();
+    }
+
+    // ════════════════════════════════
+    //  CHART LABELS CARD
+    // ════════════════════════════════
+    function renderChartLabelsCard() {
+      const listEl  = document.getElementById('chart-labels-list');
+      const emptyEl = document.getElementById('labels-empty-msg');
+
+      if (!chartLabels.length) {
+        listEl.innerHTML = '';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      listEl.innerHTML = chartLabels.map(l => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="width:14px;height:14px;border-radius:4px;background:${l.color};flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="font-size:14px;font-weight:600;color:var(--text-primary);">${l.name}</div>
+            <div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">${l.vendors.join(', ') || 'No vendors'}</div>
+          </div>
+          <button onclick="editLabel('${l.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--primary);">
+            <ion-icon name="pencil-outline" style="font-size:18px;"></ion-icon>
+          </button>
+          <button onclick="deleteLabel('${l.id}')" style="background:none;border:none;cursor:pointer;padding:4px;color:var(--danger);">
+            <ion-icon name="trash-outline" style="font-size:18px;"></ion-icon>
+          </button>
+        </div>`).join('');
+    }
+
+    // ════════════════════════════════
+    //  ADD / EDIT LABEL MODAL
+    // ════════════════════════════════
+    function openAddLabelModal() {
+      editingLabelId = null;
+      selectedVendors = new Set();
+      document.getElementById('label-modal-title').textContent = 'Add Chart Label';
+      document.getElementById('label-name-input').value = '';
+      renderVendorSelectList();
+      document.getElementById('add-label-modal').classList.add('open');
+    }
+
+    function editLabel(id) {
+      const label = chartLabels.find(l => l.id === id);
+      if (!label) return;
+      editingLabelId = id;
+      selectedVendors = new Set(label.vendors);
+      document.getElementById('label-modal-title').textContent = 'Edit Label';
+      document.getElementById('label-name-input').value = label.name;
+      renderVendorSelectList();
+      document.getElementById('add-label-modal').classList.add('open');
+    }
+
+    function renderVendorSelectList() {
+      const allVendors  = getAllVendors();
+      const taken       = getAssignedVendors(editingLabelId);
+      const listEl      = document.getElementById('vendor-select-list');
+      const emptyEl     = document.getElementById('vendor-list-empty');
+
+      if (!allVendors.length) {
+        listEl.style.display = 'none';
+        emptyEl.style.display = 'block';
+        return;
+      }
+      emptyEl.style.display = 'none';
+      listEl.style.display = 'flex';
+
+      listEl.innerHTML = allVendors.map(v => {
+        const isTaken    = taken.has(v) && !selectedVendors.has(v);
+        const isSelected = selectedVendors.has(v);
+        return `
+          <label style="display:flex;align-items:center;gap:10px;padding:8px 4px;cursor:${isTaken ? 'default' : 'pointer'};opacity:${isTaken ? 0.4 : 1};">
+            <input type="checkbox" ${isSelected ? 'checked' : ''} ${isTaken ? 'disabled' : ''}
+              onchange="toggleVendorSelect('${v.replace(/'/g,"\\'")}',this.checked)"
+              style="width:16px;height:16px;accent-color:var(--primary);" />
+            <span style="font-size:13px;color:var(--text-primary);">${v}</span>
+            ${isTaken ? '<span style="font-size:11px;color:var(--text-secondary);margin-left:auto;">Used</span>' : ''}
+          </label>`;
+      }).join('');
+    }
+
+    function toggleVendorSelect(vendor, checked) {
+      if (checked) selectedVendors.add(vendor);
+      else         selectedVendors.delete(vendor);
+    }
+
+    function saveLabelModal() {
+      const name = document.getElementById('label-name-input').value.trim();
+      if (!name) { showToast('Enter a label name'); return; }
+      if (!selectedVendors.size) { showToast('Select at least one vendor'); return; }
+
+      if (editingLabelId) {
+        const label = chartLabels.find(l => l.id === editingLabelId);
+        if (label) { label.name = name; label.vendors = [...selectedVendors]; }
+      } else {
+        chartLabels.push({
+          id:      Date.now().toString(),
+          name,
+          vendors: [...selectedVendors],
+          color:   CHART_COLORS[chartLabels.length % CHART_COLORS.length]
+        });
+      }
+      closeAddLabelModal();
+      saveState();
+      initCharts();
+    }
+
+    function deleteLabel(id) {
+      chartLabels = chartLabels.filter(l => l.id !== id);
+      saveState();
+      initCharts();
+    }
+
+    function closeAddLabelModal() {
+      document.getElementById('add-label-modal').classList.remove('open');
+      editingLabelId = null;
+      selectedVendors = new Set();
+    }
+
+    function closeAddLabelOverlay(e) {
+      if (e.target === document.getElementById('add-label-modal')) closeAddLabelModal();
+    }
+
+    // ════════════════════════════════
+    //  MODAL
+    // ════════════════════════════════
+    function openAddModal() {
+      // Render cat chips
+      const grid = document.getElementById('cat-grid');
+      grid.innerHTML = categories.map(c =>
+        `<button class="cat-chip ${c.name === selectedCat ? 'active' : ''}" onclick="selectCat('${c.name}',this)">${c.icon} ${c.name}</button>`
+      ).join('');
+      document.getElementById('add-modal').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('add-modal').classList.remove('open');
+    }
+    function closeModalOnOverlay(e) {
+      if (e.target.classList.contains('modal-overlay')) closeModal();
+    }
+    function setType(t) {
+      selectedType = t;
+      document.getElementById('type-debit').classList.toggle('active', t === 'debit');
+      document.getElementById('type-credit').classList.toggle('active', t === 'credit');
+    }
+    function selectCat(name, btn) {
+      selectedCat = name;
+      document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('active'));
+      btn.classList.add('active');
+    }
+    function addTransaction() {
+      const amount = parseFloat(document.getElementById('tx-amount').value);
+      const desc = document.getElementById('tx-desc').value.trim();
+      const method = document.getElementById('tx-method').value;
+      if (!amount || !desc) {
+        alert('Please fill in amount and description.');
+        return;
+      }
+      const now = new Date();
+      const ts = now.getTime();
+      const dateStr = `${String(now.getDate()).padStart(2,'0')} ${String(now.getMonth()+1).padStart(2,'0')}, ${now.getFullYear()}`;
+      transactions.unshift({
+        id: ts,
+        name: desc,
+        amount,
+        type: selectedType,
+        method,
+        date: dateStr,
+        ts,
+        cat: selectedCat
+      });
+      document.getElementById('tx-amount').value = '';
+      document.getElementById('tx-desc').value = '';
+      closeModal();
+      renderRecent();
+      renderAllTransactions(currentTab);
+      updateSummary();
+      saveState();
+      showToast('Transaction added!');
+    }
+
+    // ════════════════════════════════
+    //  SUMMARY
+    // ════════════════════════════════
+    function updateSummary() {
+      const monthTx  = transactions.filter(t => txInMonth(t, homeYear, homeMonth));
+      const spent    = monthTx.filter(t => t.type === 'debit').reduce((s, t) => s + t.amount, 0);
+      const received = monthTx.filter(t => t.type === 'credit').reduce((s, t) => s + t.amount, 0);
+      document.getElementById('total-spent').textContent    = '₹' + spent.toLocaleString('en-IN');
+      document.getElementById('total-received').textContent = '₹' + received.toLocaleString('en-IN');
+      budgets[0].spent = spent;
+    }
+
+    // ════════════════════════════════
+    //  SMS PARSING
+    // ════════════════════════════════
+    const BANK_KEYS = [
+      'HDFC','SBI','ICICI','AXIS','KOTAK','PAYTM','PHONEPE','GPAY',
+      'INDUS','BOI','UNION','CANARA','PNB','BARODA','YESBNK','IDFC',
+      'SCBNK','CITIBNK','BNK','BANK','UPI','NEFT','IMPS','RTGS'
+    ];
+
+    function isBankSender(address) {
+      const up = (address || '').toUpperCase();
+      return BANK_KEYS.some(k => up.includes(k));
+    }
+
+    function parseAmount(text) {
+      const m = text.match(/(?:Rs\.?|INR|₹)\s*([0-9,]+(?:\.[0-9]{1,2})?)/i);
+      return m ? parseFloat(m[1].replace(/,/g, '')) : 0;
+    }
+
+    function guessCat(body, type) {
+      const b = body.toLowerCase();
+      if (type === 'credit') return 'Salary';
+      if (/zomato|swiggy|food|restaurant|cafe|hotel|eat/.test(b))  return 'Food';
+      if (/uber|ola|metro|bus|train|fuel|petrol|cab/.test(b))      return 'Transport';
+      if (/amazon|flipkart|myntra|shop|store|mall/.test(b))        return 'Shopping';
+      if (/electricity|water|gas|internet|broadband|bill/.test(b)) return 'Utilities';
+      if (/hospital|pharmacy|medical|doctor|health/.test(b))       return 'Health';
+      if (/netflix|hotstar|prime|movie|cinema/.test(b))            return 'Entertainment';
+      return 'Other';
+    }
+
+    // Extract meaningful merchant/payee name from SMS body
+    function extractMerchant(body) {
+      let m;
+
+      // 1. UPI Info field: "Info: UPI/MerchantName/ref" or "Info: UPI-MerchantName"
+      m = body.match(/\bInfo\s*[:\-]\s*(?:UPI[-\/])?([A-Za-z][A-Za-z0-9 &'.]{2,25})(?:[-\/\.]|$)/i);
+      if (m && !/^(upi|neft|imps|rtgs|ref|no)/i.test(m[1])) return m[1].trim();
+
+      // 2. "to MerchantName on/via/for" – common UPI pattern
+      m = body.match(/\bto\s+([A-Za-z][A-Za-z0-9 &'.]{2,25})\s+(?:on\b|via\b|for\b|using\b)/i);
+      if (m) return m[1].trim();
+
+      // 3. VPA before "@": "zomato@okicici" → "zomato"
+      m = body.match(/\b([A-Za-z][A-Za-z0-9_.]{2,25})@(?:ok|ybl|upi|paytm|icici|sbi|hdfc|axis|kotak|ibl|oksbi|okaxis|okicici)/i);
+      if (m) return m[1];
+
+      // 4. After semicolon (ICICI / some HDFC): "...debited;MerchantName."
+      m = body.match(/;([A-Za-z][A-Za-z0-9 &'.]{2,25})[.\s]/);
+      if (m) return m[1].trim();
+
+      // 5. "at MerchantName" – POS / card swipe
+      m = body.match(/\bat\s+([A-Za-z][A-Za-z0-9 &'.]{2,25})(?:\s+on|\s+for|[,.]|$)/i);
+      if (m) return m[1].trim();
+
+      // 6. "Trf to Name" – fund transfer
+      m = body.match(/\bTrf\s+(?:to\s+)?([A-Za-z][A-Za-z0-9 ]{2,25})/i);
+      if (m) return m[1].trim();
+
+      // 7. "to Name" anywhere (last resort, no context guard)
+      m = body.match(/\bto\s+([A-Za-z][A-Za-z0-9 &'.]{2,25})(?:[,.\s]|$)/i);
+      if (m && !/^(your|the|a\s|an\s)/i.test(m[1])) return m[1].trim();
+
+      return null;
+    }
+
+    // Make the bank sender ID human-readable as fallback
+    function cleanSenderName(address) {
+      const up = (address || '').toUpperCase();
+      const map = {
+        'HDFC': 'HDFC Bank', 'SBI': 'SBI Bank', 'ICICI': 'ICICI Bank',
+        'AXIS': 'Axis Bank', 'KOTAK': 'Kotak Bank', 'PAYTM': 'Paytm',
+        'PHONEPE': 'PhonePe', 'GPAY': 'Google Pay', 'INDUS': 'IndusInd Bank',
+        'PNB': 'PNB', 'BARODA': 'Bank of Baroda', 'YESBNK': 'Yes Bank',
+        'IDFC': 'IDFC Bank', 'CANARA': 'Canara Bank', 'BOI': 'Bank of India',
+      };
+      for (const [key, val] of Object.entries(map)) {
+        if (up.includes(key)) return val;
+      }
+      return address || 'Bank';
+    }
+
+    // Smarter type detection — credit checked first with context, debit is fallback
+    function detectSmsType(body) {
+      const b = body;
+
+      // ── CREDIT (money IN) ─────────────────────────────────────────
+      // "credited to your a/c" or "your a/c credited"
+      if (/credit(?:ed)?\s+(?:to\s+)?(?:your|a\/c|acct|account)/i.test(b)) return 'credit';
+      if (/(?:your|a\/c|acct|account)\s+\S+\s+(?:is\s+)?credit(?:ed)/i.test(b))  return 'credit';
+      // "received from" someone
+      if (/\breceived\b.{0,40}\bfrom\b/i.test(b)) return 'credit';
+      // refund / cashback / deposit
+      if (/\b(refund|cashback|cash\s+back|deposited)\b/i.test(b)) return 'credit';
+      // "amount added to your account"
+      if (/\badded\s+to\s+(?:your|a\/c)/i.test(b)) return 'credit';
+
+      // ── DEBIT (money OUT) ─────────────────────────────────────────
+      // "debited from your a/c" or "your a/c debited"
+      if (/debit(?:ed)?\s+(?:from\s+)?(?:your|a\/c|acct|account)/i.test(b)) return 'debit';
+      if (/(?:your|a\/c|acct|account)\s+\S+\s+(?:is\s+)?debit(?:ed)/i.test(b))  return 'debit';
+      // spent / withdrawn / charged at POS
+      if (/\b(spent|withdrawn|withdraw|charged|purchase)\b/i.test(b)) return 'debit';
+      // "paid to" / "sent to" / "transferred to"
+      if (/\b(paid|sent|transfer(?:red)?)\s+(?:to\b|Rs|INR|₹)/i.test(b)) return 'debit';
+      // payment made / successful
+      if (/\bpayment\s+(?:of|made|done|successful|towards)\b/i.test(b)) return 'debit';
+
+      // ── Fallback: bare keyword ────────────────────────────────────
+      if (/\bcredit(?:ed)?\b/i.test(b)) return 'credit';
+      if (/\bdebit(?:ed)?\b/i.test(b))  return 'debit';
+
+      return null;
+    }
+
+    // Extract name — for credit use "from/by" patterns; for debit use existing merchant logic
+    function extractName(body, type) {
+      let m;
+      if (type === 'credit') {
+        // "received from NAME via/on/using"
+        m = body.match(/\b(?:from|by)\s+([A-Za-z][A-Za-z0-9 &'.]{2,25})\s+(?:via|on|using|through|ref)/i);
+        if (m) return m[1].trim();
+        // "from NAME" at end or before punctuation
+        m = body.match(/\bfrom\s+([A-Za-z][A-Za-z0-9 &'.]{2,28})(?:[,.\s]|$)/i);
+        if (m && !/^(your|the|upi|neft|imps|a\/c|account)/i.test(m[1])) return m[1].trim();
+        // VPA before "@"
+        m = body.match(/\b([A-Za-z][A-Za-z0-9_.]{2,25})@(?:ok|ybl|upi|paytm|icici|sbi|hdfc|axis|kotak|ibl)/i);
+        if (m) return m[1];
+      }
+      return extractMerchant(body);
+    }
+
+    function parseSmsMessages(messages) {
+      const parsed = [];
+
+      messages.forEach(msg => {
+        if (!isBankSender(msg.address)) return;
+        const body   = (msg.body || '').replace(/\n/g, ' ');
+        const amount = parseAmount(body);
+        if (!amount || amount <= 0) return;
+
+        const type = detectSmsType(body);
+        if (!type) return;
+
+        const d = new Date(msg.date);
+        const dateStr = `${String(d.getDate()).padStart(2,'0')} ${String(d.getMonth()+1).padStart(2,'0')}, ${d.getFullYear()}`;
+
+        const extracted = extractName(body, type);
+        const name = extracted ? extracted : cleanSenderName(msg.address);
+
+        parsed.push({
+          id:      msg.date + '_' + Math.random().toString(36).slice(2),
+          name:    name.substring(0, 30),
+          amount,
+          type,
+          method:  'SMS Auto',
+          date:    dateStr,
+          ts:      msg.date,
+          cat:     guessCat(body, type),
+          fromSms: true
+        });
+      });
+
+      return parsed;
+    }
+
+    async function loadSmsTransactions() {
+      const Plugins = (window.Capacitor || {}).Plugins;
+      if (!Plugins || !Plugins.Sms) {
+        showToast('SMS plugin not available');
+        return;
+      }
+      try {
+        const { messages } = await Plugins.Sms.getMessages({ limit: 300 });
+        const smsTx = parseSmsMessages(messages);
+
+        // Replace old SMS entries, keep manually-added ones
+        transactions = transactions.filter(t => !t.fromSms);
+        transactions.push(...smsTx);
+        transactions.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+
+        renderRecent();
+        renderAllTransactions(currentTab);
+        updateSummary();
+        renderBudget();
+        saveState();
+        showToast('Loaded ' + smsTx.length + ' transactions from SMS');
+      } catch (e) {
+        showToast('Could not read SMS: ' + e.message);
+      }
+    }
+
+    // ════════════════════════════════
+    //  SMS TOGGLE
+    // ════════════════════════════════
+    async function toggleSMS() {
+      const Plugins = (window.Capacitor || {}).Plugins;
+      if (!Plugins || !Plugins.Sms) {
+        showToast('SMS reading requires the Android app');
+        return;
+      }
+      try {
+        const { granted } = await Plugins.Sms.requestPermission();
+        if (granted) {
+          smsEnabled = true;
+          notificationMode = false;
+          document.getElementById('sms-banner').innerHTML = `
+            <ion-icon name="checkmark-circle" style="color:var(--success);font-size:20px"></ion-icon>
+            <div style="color:#2E7D32"><strong>SMS auto-read is ON.</strong> Reading your bank messages…</div>`;
+          window.Capacitor.addListener('Sms', 'smsReceived', handleRealtimeSms);
+          await loadSmsTransactions();
+        } else {
+          showSmsPermissionHelp();
+        }
+      } catch (e) {
+        showToast('Error: ' + e.message);
+      }
+    }
+
+    function showSmsPermissionHelp() {
+      document.getElementById('sms-banner').innerHTML = `
+        <ion-icon name="warning-outline" style="color:#F57C00;font-size:20px;flex-shrink:0;"></ion-icon>
+        <div style="flex:1;">
+          <strong style="color:#E65100;">SMS permission blocked.</strong><br>
+          <span style="font-size:11px;color:#555;">Android restricts this on your device. Choose an option:</span>
+          <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="openSmsAppSettings()" style="border:none;background:var(--primary);color:white;font-size:11px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:6px;">Open App Settings</button>
+            <button onclick="enableNotificationListener()" style="border:none;background:#4CAF50;color:white;font-size:11px;font-weight:600;cursor:pointer;padding:6px 10px;border-radius:6px;">Use Notifications Instead</button>
+          </div>
+        </div>`;
+    }
+
+    async function openSmsAppSettings() {
+      const Plugins = (window.Capacitor || {}).Plugins;
+      if (!Plugins || !Plugins.Sms) return;
+      await Plugins.Sms.openAppSettings();
+      showToast('Enable SMS → come back and tap Enable again');
+    }
+
+    async function enableNotificationListener() {
+      const Plugins = (window.Capacitor || {}).Plugins;
+      if (!Plugins || !Plugins.Sms) return;
+      const { enabled } = await Plugins.Sms.checkNotificationAccess();
+      if (enabled) {
+        notificationMode = true;
+        smsEnabled = true;
+        document.getElementById('sms-banner').innerHTML = `
+          <ion-icon name="checkmark-circle" style="color:var(--success);font-size:20px"></ion-icon>
+          <div style="color:#2E7D32"><strong>Notification mode ON.</strong> Captures bank SMS as they arrive.</div>`;
+        window.Capacitor.addListener('Sms', 'smsReceived', handleRealtimeSms);
+        saveState();
+        showToast('Notification listener active — new bank SMS will auto-detect');
+      } else {
+        await Plugins.Sms.openNotificationSettings();
+        showToast('Enable SpendTracker → come back and tap "Use Notifications Instead"');
+      }
+    }
+
+    function handleRealtimeSms(msg) {
+      const smsTx = parseSmsMessages([{ address: msg.address, body: msg.body, date: msg.date }]);
+      if (!smsTx.length) return;
+      smsTx.forEach(tx => {
+        if (!transactions.find(t => t.id === tx.id)) transactions.unshift(tx);
+      });
+      transactions.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+      renderRecent();
+      renderAllTransactions(currentTab);
+      updateSummary();
+      saveState();
+      showToast('New transaction: ₹' + smsTx[0].amount.toLocaleString('en-IN'));
+    }
+
+    function cycleFilter(type) { /* visual feedback only */ }
+
+    // ════════════════════════════════
+    //  SETTINGS SCREEN
+    // ════════════════════════════════
+    function refreshSettingsScreen() {
+      const toggle = document.getElementById('sms-settings-toggle');
+      toggle.className = 'toggle ' + (smsEnabled ? 'on' : '');
+      document.getElementById('refresh-sms-btn').style.display = smsEnabled ? 'block' : 'none';
+      document.getElementById('settings-tx-count').textContent = transactions.length;
+    }
+
+    async function toggleSmsFromSettings() {
+      if (smsEnabled) {
+        smsEnabled = false;
+        notificationMode = false;
+        transactions = transactions.filter(t => !t.fromSms);
+        renderRecent();
+        renderAllTransactions(currentTab);
+        updateSummary();
+        refreshSettingsScreen();
+        saveState();
+        showToast('SMS auto-read disabled');
+      } else {
+        await toggleSMS();
+        refreshSettingsScreen();
+      }
+    }
+
+    function clearManualTransactions() {
+      if (!confirm('Clear all manually added transactions?')) return;
+      transactions = transactions.filter(t => t.fromSms);
+      renderRecent(); renderAllTransactions(currentTab); updateSummary(); refreshSettingsScreen();
+      saveState();
+      showToast('Manual transactions cleared');
+    }
+
+    function clearAllTransactions() {
+      if (!confirm('Clear ALL transactions?')) return;
+      transactions = [];
+      smsEnabled = false;
+      chartLabels = [];
+      renderRecent(); renderAllTransactions(currentTab); updateSummary(); refreshSettingsScreen();
+      saveState();
+      showToast('All transactions cleared');
+    }
+
+    function showToast(msg) {
+      const t = document.createElement('div');
+      t.textContent = msg;
+      t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#323232;color:white;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;animation:fadeIn 0.3s ease;';
+      document.body.appendChild(t);
+      setTimeout(() => t.remove(), 2500);
+    }
+
+    // ════════════════════════════════
+    //  PERSISTENCE
+    // ════════════════════════════════
+    function saveState() {
+      try {
+        localStorage.setItem('st_smsEnabled',       JSON.stringify(smsEnabled));
+        localStorage.setItem('st_notificationMode', JSON.stringify(notificationMode));
+        localStorage.setItem('st_chartLabels',      JSON.stringify(chartLabels));
+        localStorage.setItem('st_transactions',     JSON.stringify(transactions));
+      } catch(e) {}
+    }
+
+    function loadState() {
+      try {
+        const se = localStorage.getItem('st_smsEnabled');
+        const nm = localStorage.getItem('st_notificationMode');
+        const cl = localStorage.getItem('st_chartLabels');
+        const tx = localStorage.getItem('st_transactions');
+        if (se !== null) smsEnabled       = JSON.parse(se);
+        if (nm !== null) notificationMode = JSON.parse(nm);
+        if (cl !== null) chartLabels      = JSON.parse(cl);
+        if (tx !== null) transactions     = JSON.parse(tx);
+      } catch(e) {}
+    }
+
+    // ════════════════════════════════
+    //  INIT
+    // ════════════════════════════════
+    loadState();
+
+    const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('month-label').textContent = MONTHS[homeMonth] + ' ' + homeYear;
+
+    if (smsEnabled) {
+      if (notificationMode) {
+        document.getElementById('sms-banner').innerHTML = `
+          <ion-icon name="checkmark-circle" style="color:var(--success);font-size:20px"></ion-icon>
+          <div style="color:#2E7D32"><strong>Notification mode ON.</strong> Captures bank SMS as they arrive.</div>
+          <ion-icon name="close" class="close" onclick="document.getElementById('sms-banner').style.display='none'"></ion-icon>`;
+        const _P = (window.Capacitor || {}).Plugins;
+        if (_P && _P.Sms) window.Capacitor.addListener('Sms', 'smsReceived', handleRealtimeSms);
+      } else {
+        document.getElementById('sms-banner').innerHTML = `
+          <ion-icon name="checkmark-circle" style="color:var(--success);font-size:20px"></ion-icon>
+          <div style="color:#2E7D32"><strong>SMS auto-read is ON.</strong> Refreshing transactions…</div>
+          <ion-icon name="close" class="close" onclick="document.getElementById('sms-banner').style.display='none'"></ion-icon>`;
+      }
+    }
+
+    renderRecent();
+    renderAllTransactions();
+    renderBudget();
+    updateSummary();
+    showScreen('home');
+
+    if (smsEnabled) {
+      loadSmsTransactions().catch(() => {});
+    }
+  </script>
+</body>
+</html>
